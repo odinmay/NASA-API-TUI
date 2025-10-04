@@ -10,18 +10,10 @@ from textual.app import App, ComposeResult
 from textual.widgets import (Header,
                              Select,
                              Label,
-                             TextArea,
                              Button,
-                             Welcome,
-                             Footer,
                              Static,
                              )
 from textual.containers import (Container,
-                                VerticalScroll,
-                                HorizontalScroll,
-                                VerticalGroup,
-                                HorizontalGroup,
-                                ScrollableContainer,
                                 Vertical,
                                 Horizontal,
                                 )
@@ -62,14 +54,15 @@ class NasaApp(App):
                 yield Button(label="TEST")
 
 
-        
     def on_mount(self) -> None:
         # self.screen.styles.background = "black"
         self.screen.styles.border = ("dashed", "maroon")
 
+
     def on_key(self, event) -> None:
         if event.key == "q":
             self.exit()
+
 
     @on(Select.Changed)
     def select_changed(self, event: Select.Changed) -> None:
@@ -88,33 +81,9 @@ class NasaApp(App):
                 self.title = "NASA Rover API"
 
 
-
-
-if __name__ == "__main__":
-    app = NasaApp()
-    app.run()
-
-
-
-
+# TODO Create an api class with api key in constructor, move these functions to api class
 def get_rover_photos(rover="curiosity", camera="all", sol=1, earth_date=None):
-    """Get all photo data from the NASA Rover API
-    rover options:
-        curiosity
-        opportunity
-        spirit
-    camera options and rover that can use them [curiosity, opportunity, spirit] (c,o,s):
-        all
-        FHAZ(c,o,s)
-        RHAZ(c,o,s)
-        MAST(c)
-        CHEMCAM(c)
-        MAHLI(c)
-        MARDI(c)
-        NAVCAM(c,o,s)
-        PANCAM(o,s)
-        MINITES(o,s)
-    """
+    """Get all photo data from the NASA Rover API"""
 
     nasa_test_url = f"https://api.nasa.gov/mars-photos/api/v1/rovers/{rover}/photos?sol={sol}&earth_date={earth_date}&api_key={api_key}"
 
@@ -131,7 +100,6 @@ def get_rover_manifest_json(rover_name="curiosity"):
     return response.json()
 
 
-
-
-# manifest_resp = get_rover_manifest_json()
-# print(manifest_resp)
+if __name__ == "__main__":
+    app = NasaApp()
+    app.run()
