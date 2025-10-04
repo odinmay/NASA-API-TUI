@@ -12,10 +12,15 @@ from textual.widgets import (Header,
                              Label,
                              Button,
                              Static,
+                             Placeholder,
+                             Footer,
                              )
 from textual.containers import (Container,
                                 Vertical,
-                                Horizontal,
+                                VerticalGroup,
+                                VerticalScroll,
+                                HorizontalGroup,
+                                Center, Horizontal,
                                 )
 
 
@@ -37,6 +42,61 @@ SELECTABLE_CAMERAS = (
     ("Navcam", "NAVCAM"),
 )
 
+
+class Box(Placeholder):
+    pass
+
+
+class TopLeftGroup(VerticalGroup):
+    def compose(self):
+        with Center():
+            self.border_title = "Rover Info"
+            curiosity_button = Button(label="Curiosity", classes="left-top-button")
+            opportunity_button = Button(label="Opportunity", classes="left-top-button")
+            spirit_button = Button(label="Spirit", classes="left-top-button")
+
+            yield curiosity_button
+            yield opportunity_button
+            yield spirit_button
+
+    def on_button_pressed(self, event: Button.Pressed):
+        self.border_title = event.button.label
+
+class BottomLeftGroup(VerticalGroup):
+    def compose(self):
+        with Center():
+            yield Button(label="Get Rover Photos", classes="left-bottom-button")
+            yield Button(label="Get Martian Weather", classes="left-bottom-button")
+            yield Button(label="Get Solar Weather", classes="left-bottom-button")
+            yield Button(label="Sun Status", classes="left-bottom-button")
+            yield Button(label="NASA Photos", classes="left-bottom-button")
+            yield Button(label="NASA Videos", classes="left-bottom-button")
+            yield Button(label="Science Data Repository", classes="left-bottom-button")
+
+
+class RightSideMain(Vertical):
+    def compose(self):
+        with Center():
+            yield Box()
+            yield Box()
+            yield Box()
+            yield Box()
+
+
+class RightSideTitle(Horizontal):
+    def compose(self):
+        with Center():
+            yield Label("SELECTED ROVER OR OTHER TITLE")
+
+###### Custom Widgets ######
+top_left_group = TopLeftGroup(id="top-left-group")
+bottom_left_group = BottomLeftGroup(id="bottom-left-group")
+
+right_side_title = RightSideTitle(id="right-side-title")
+right_side_main = RightSideMain(id="right-side-main")
+############################
+
+###### Main Application ######
 class NasaApp(App):
     CSS_PATH = "select.tcss"
     TITLE = "NASA Rover API"
@@ -45,18 +105,26 @@ class NasaApp(App):
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True, icon="☾")
 
-        with Container(id = "main_content"):
-            with Vertical(id="vertical_group"):
-                yield Static(content="View Rover Manifest", id="static_content")
-                yield Select(choice for choice in SELECTABLE_ROVERS)
-            with Horizontal(id="horizontal_group"):
-                yield Button(label="Get Manifest")
-                yield Button(label="TEST")
+        # Main Screen Area
+        #  --HorizontalGroup with 2 Widget, 1:2 ratio layout
+        with HorizontalGroup(id="main-content"):
+            # Left side of screen
+            with VerticalGroup(id="left-side"):
+                yield top_left_group
+                yield bottom_left_group
 
+            # Right side of screen
+            with VerticalGroup(id="right-side"):
+                yield right_side_title
+                yield right_side_main
+        
+
+        yield Footer()
 
     def on_mount(self) -> None:
         # self.screen.styles.background = "black"
-        self.screen.styles.border = ("dashed", "maroon")
+        # self.screen.styles.border = ("dashed", "maroon")
+        self.theme = "gruvbox"
 
 
     def on_key(self, event) -> None:
