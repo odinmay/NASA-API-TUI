@@ -15,14 +15,15 @@ from textual.widgets import (Header,
                              Static,
                              Placeholder,
                              Footer,
-                             DataTable,
+                             Markdown,
                              )
 from textual.containers import (Container,
                                 Vertical,
                                 VerticalGroup,
                                 VerticalScroll,
                                 HorizontalGroup,
-                                Center, Horizontal,
+                                Center,
+                                Horizontal,
                                 )
 
 
@@ -67,33 +68,64 @@ class API():
         return response.json()
 
 
-    def create_manifest_table(self, manifest_json):
+    def format_manifest_to_markdown(self, manifest_json, rover_name: str) -> Markdown:
         """Create Manifest Table"""
         photo_manifest = manifest_json.get("photo_manifest")
 
-        name = photo_manifest.get("name")
-        landing_date = photo_manifest.get("landing_date")
-        launch_date = photo_manifest.get("launch_date")
-        status = photo_manifest.get("status")
-        max_sol = photo_manifest.get("max_sol")
-        max_date = photo_manifest.get("max_date")
-        total_photos = photo_manifest.get("total_photos")
+        manifest_dict = {}
+        manifest_dict["Name"] = photo_manifest.get("name")
+        manifest_dict["Landing Date"] = photo_manifest.get("landing_date")
+        manifest_dict["Launch Date"] = photo_manifest.get("launch_date")
+        manifest_dict["Status"] = photo_manifest.get("status")
+        manifest_dict["Max Sol"] = photo_manifest.get("max_sol")
+        manifest_dict["Max Date"] = photo_manifest.get("max_date")
+        manifest_dict["Total Photos"] = photo_manifest.get("total_photos")
 
-        rows = [("Name", "Landing Date", "Launch Date", "Status", "Max Sol", "Max Date", "Total Photos"),
-                (name, landing_date, launch_date, status, max_sol, max_date, total_photos)]
 
-        table = DataTable()
-        table.add_column(rows[0])
-        table.add_rows(rows[1])
+        curiosity_description = """
+        Curiosity is a car-sized Mars rover that is exploring Gale crater and Mount Sharp on Mars as 
+        part of NASA's Mars Science Laboratory (MSL) mission. Launched in 2011 and landed the following year,
+        the rover continues to operate more than a decade after its original two-year mission.
 
-        return table
+        Curiosity was launched from Cape Canaveral (CCAFS) on November 26, 2011, at 15:02:00 UTC and 
+        landed on Aeolis Palus inside Gale crater on Mars on August 6, 2012, 05:17:57 UTC. 
+        The Bradbury Landing site was less than 2.4 km (1.5 mi) from the center of the rover's touchdown
+        target after a 560 million km (350 million mi) journey.
 
-    def get_rover_manifest_data_table(self, rover_name: str):
+        Mission goals include an investigation of the Martian climate and geology, an assessment of
+        whether the selected field site inside Gale has ever offered environmental conditions favorable
+        for microbial life (including investigation of the role of water), and planetary habitability 
+        studies in preparation for human exploration.
+        """
+
+        descriptions = {
+            "curiosity": curiosity_description,
+            "opportunity": "PLACEHOLDER",
+            "spirit": "PLACEHOLDER"
+            }
+
+        markdown_str = f"""
+        ## {manifest_dict["Name"]} Rover Manifest.
+        # Launch Date: {manifest_dict["Launch Date"]}
+        # Landing Date: {manifest_dict["Landing Date"]}
+        # Status" {manifest_dict["Status"]}
+        # Max Sol: {manifest_dict["Max Sol"]}
+        # Max Date: {manifest_dict["Max Date"]}
+        # Total Photos: {manifest_dict["Total Photos"]}
+        
+        {descriptions[rover_name]}
+        
+        """
+        manifest_markdown = Markdown(markdown_str)
+
+        return manifest_markdown
+
+    def get_rover_markdown(self, rover_name: str):
         rover_json = self.get_rover_manifest_json(rover_name)
 
-        manifest_data_table = self.create_manifest_table(rover_json)
+        manifest_markdown = self.format_manifest_to_markdown(rover_json)
 
-        return manifest_data_table
+        return manifest_markdown
 
 
 class Box(Placeholder):
@@ -154,11 +186,15 @@ class NasaApp(App):
     CSS_PATH = "select.tcss"
     TITLE = "NASA Rover API"
     SUB_TITLE = "Explore the NASA API!"
+    BINDINGS = [("t", 'cycle_theme', 'Cycle Theme')]
+
     selected_rover = reactive("NASA API")
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.nasa_api = API(api_key)
+        self.all_themes = ('gruvbox', 'nord', 'tokyo-night', 'textual-dark', 'flexoki', 'catppuccin-mocha')
+        self.current_theme_index = 0
 
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True, icon="☾")
@@ -182,7 +218,7 @@ class NasaApp(App):
     def on_mount(self) -> None:
         # self.screen.styles.background = "black"
         # self.screen.styles.border = ("dashed", "maroon")
-        self.theme = "flexoki"
+        self.theme = self.all_themes[0]
         nasa_api = API(api_key)
 
 
@@ -196,16 +232,24 @@ class NasaApp(App):
         print(type(event))
         if event.button.label == "Curiosity":
             self.selected_rover = event.button.label
-            rover_manifest_table = self.nasa_api.get_rover_manifest_data_table(self.selected_rover)
-            self.mount(rover_manifest_table, after="right-side-title")
+
+            manifest_markdown = self.nasa_api.get_rover_markdown(self.selected_rover)
+
+            # self.mount(rover_manifest_table, after="right-side-title")
         elif event.button.label == "Opportunity":
             self.selected_rover = event.button.label
         elif event.button.label == "Spirit":
             self.selected_rover = event.button.label
 
 
+    def action_cycle_theme(self):
+        """Cycle to the next theme defined in the Class variable Tuple all_themes"""
+        if self.current_theme_index + 1 > len(self.all_themes) - 1:
+            self.current_theme_index = 0
+        else:
+            self.current_theme_index += 1
 
-
+        self.theme = (self.all_themes[self.current_theme_index])
 
     @on(Select.Changed)
     def select_changed(self, event: Select.Changed) -> None:
