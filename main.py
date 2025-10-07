@@ -1,5 +1,6 @@
 from pprint import pprint
 import logging
+import pickle
 import os
 
 import requests
@@ -8,6 +9,7 @@ import rich
 from textual import on
 from textual.app import App, ComposeResult
 from textual.reactive import reactive
+from textual.theme import Theme
 from textual.widgets import (Header,
                              Select,
                              Label,
@@ -44,6 +46,10 @@ SELECTABLE_CAMERAS = (
     ("Mariner 1 Camera", "MARDI"),
     ("Navcam", "NAVCAM"),
 )
+
+custom_themes = [
+
+]
 
 
 class API():
@@ -182,19 +188,80 @@ right_side_main = RightSideMain(id="right-side-main")
 ############################
 
 ###### Main Application ######
+def get_or_create_fav_themes() -> list:
+    """Returns a list of all favorite themes, using a serial object for persistence"""
+    if os.path.exists('fav_themes.pkl'):
+        with open('fav_themes.pkl', 'rb') as f:
+            fav_themes = pickle.load(f)
+    else:
+        fav_themes = []
+        with open('fav_themes.pkl', 'wb') as f:
+            pickle.dump(fav_themes, f)
+
+    return fav_themes
+
+
 class NasaApp(App):
     CSS_PATH = "select.tcss"
     TITLE = "NASA Rover API"
     SUB_TITLE = "Explore the NASA API!"
-    BINDINGS = [("t", 'cycle_theme', 'Cycle Theme')]
+    BINDINGS = [('t', 'cycle_theme', 'Cycle Theme'),
+                ('f', 'favorite_theme', 'Favorite Theme'),
+                ('T', 'cycle_fav_themes', 'Cycle Fav Themes'),
+                ]
+
+    custom_themes = {
+        "arctic" : Theme(
+        name="arctic",
+        primary="#88C0D0",
+        secondary="#81A1C1",
+        accent="#B48EAD",
+        foreground="#D8DEE9",
+        background="#2E3440",
+        success="#A3BE8C",
+        warning="#EBCB8B",
+        error="#BF616A",
+        surface="#3B4252",
+        panel="#434C5E",
+        dark=True,
+        variables={
+            "block-cursor-text-style": "none",
+            "footer-key-foreground": "#88C0D0",
+            "input-selection-background": "#81a1c1 35%",
+        }),
+        "test_theme": Theme(
+            name="test_theme",
+            primary="#88C0D0",
+            secondary="#81A1C1",
+            accent="#B48EAD",
+            foreground="#D8DEE9",
+            background="red",
+            success="#A3BE8C",
+            warning="#EBCB8B",
+            error="#BF616A",
+            surface="#3B4252",
+            panel="#434C5E",
+            dark=True,
+            variables={
+                "block-cursor-text-style": "none",
+                "footer-key-foreground": "#88C0D0",
+                "input-selection-background": "#81a1c1 35%",
+            }),
+    }
 
     selected_rover = reactive("NASA API")
+    all_themes = ['gruvbox', 'nord', 'tokyo-night', 'textual-dark', 'flexoki', 'catppuccin-mocha']
+    current_theme_index = 0
+    fav_theme_index = 0
+    selected_theme = reactive(all_themes[0], init=False, recompose=False)
+    selected_theme_str = all_themes[current_theme_index]
+    fav_themes = get_or_create_fav_themes()
+
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.nasa_api = API(api_key)
-        self.all_themes = ('gruvbox', 'nord', 'tokyo-night', 'textual-dark', 'flexoki', 'catppuccin-mocha')
-        self.current_theme_index = 0
+
 
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True, icon="☾")
@@ -212,15 +279,19 @@ class NasaApp(App):
             with VerticalGroup(id="right-side"):
                 yield right_side_title
                 yield right_side_main
+                yield Label("Theme: " + str(self.selected_theme_str), id="selected-theme")
 
         yield Footer()
 
     def on_mount(self) -> None:
         # self.screen.styles.background = "black"
         # self.screen.styles.border = ("dashed", "maroon")
+        for theme_name, theme in self.custom_themes.items():
+            self.all_themes.append(theme_name)
+            self.register_theme(theme)
+
         self.theme = self.all_themes[0]
         nasa_api = API(api_key)
-
 
     def on_key(self, event) -> None:
         if event.key == "q":
@@ -241,15 +312,52 @@ class NasaApp(App):
         elif event.button.label == "Spirit":
             self.selected_rover = event.button.label
 
+    def watch_selected_theme(self, old_value, new_value) -> None:
+        self.selected_theme = new_value
+        self.selected_theme_str = self.all_themes[self.current_theme_index]
+
+        if new_value in self.fav_themes:
+            self.query_one("#selected-theme").update("Theme: ★" + self.selected_theme_str)
+        else:
+            self.query_one("#selected-theme").update("Theme: " + self.selected_theme_str)
 
     def action_cycle_theme(self):
         """Cycle to the next theme defined in the Class variable Tuple all_themes"""
         if self.current_theme_index + 1 > len(self.all_themes) - 1:
             self.current_theme_index = 0
+
         else:
             self.current_theme_index += 1
 
         self.theme = (self.all_themes[self.current_theme_index])
+        # Reactive var which is used in ui
+        self.selected_theme = self.all_themes[self.current_theme_index]
+
+
+    def action_cycle_fav_themes(self):
+        """Cycle to the next theme defined in the Class variable Tuple all_themes"""
+        if len(self.fav_themes) == 0:
+            return
+
+        if self.fav_theme_index + 1 > len(self.fav_themes) - 1:
+            self.fav_theme_index = 0
+        else:
+            self.fav_theme_index += 1
+
+        self.theme = (self.fav_themes[self.fav_theme_index])
+
+        # Reactive var which is used in ui
+        self.selected_theme = self.fav_themes[self.fav_theme_index]
+
+    def action_favorite_theme(self):
+        """Add or remove the theme from the favorite themes list. If it is in the list, remove, otherwise, add"""
+        if self.all_themes[self.current_theme_index] in self.fav_themes:
+            self.fav_themes.remove(self.all_themes[self.current_theme_index])
+
+        else:
+            self.fav_themes.append(self.all_themes[self.current_theme_index])
+            # Reactive var which is used in ui
+            self.selected_theme = self.all_themes[self.current_theme_index]
 
     @on(Select.Changed)
     def select_changed(self, event: Select.Changed) -> None:
@@ -266,9 +374,6 @@ class NasaApp(App):
                 self.mount(Label("Opportunity"))
             case _:
                 self.title = "NASA Rover API"
-
-    def get_rover_manifest_json(self, param):
-        pass
 
 
 if __name__ == "__main__":

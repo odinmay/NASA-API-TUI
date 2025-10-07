@@ -2,6 +2,7 @@ Screen {
     width: 100%;
     height: 20;
     overflow-y: hidden;
+    background: $background;
 }
 
 
