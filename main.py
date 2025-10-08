@@ -1,3 +1,4 @@
+from UI.themes import custom_themes
 from pprint import pprint
 import logging
 import pickle
@@ -9,7 +10,7 @@ import rich
 from textual import on
 from textual.app import App, ComposeResult
 from textual.reactive import reactive
-from textual.theme import Theme
+
 from textual.widgets import (Header,
                              Select,
                              Label,
@@ -47,9 +48,6 @@ SELECTABLE_CAMERAS = (
     ("Navcam", "NAVCAM"),
 )
 
-custom_themes = [
-
-]
 
 
 class API():
@@ -200,6 +198,11 @@ def get_or_create_fav_themes() -> list:
 
     return fav_themes
 
+def pickle_themes(fav_themes: list):
+    """Save the fav theme list to a serial file for persistence"""
+    with open('fav_themes.pkl', 'wb') as f:
+        pickle.dump(fav_themes, f)
+
 
 class NasaApp(App):
     CSS_PATH = "select.tcss"
@@ -210,47 +213,8 @@ class NasaApp(App):
                 ('T', 'cycle_fav_themes', 'Cycle Fav Themes'),
                 ]
 
-    custom_themes = {
-        "arctic" : Theme(
-        name="arctic",
-        primary="#88C0D0",
-        secondary="#81A1C1",
-        accent="#B48EAD",
-        foreground="#D8DEE9",
-        background="#2E3440",
-        success="#A3BE8C",
-        warning="#EBCB8B",
-        error="#BF616A",
-        surface="#3B4252",
-        panel="#434C5E",
-        dark=True,
-        variables={
-            "block-cursor-text-style": "none",
-            "footer-key-foreground": "#88C0D0",
-            "input-selection-background": "#81a1c1 35%",
-        }),
-        "test_theme": Theme(
-            name="test_theme",
-            primary="#88C0D0",
-            secondary="#81A1C1",
-            accent="#B48EAD",
-            foreground="#D8DEE9",
-            background="red",
-            success="#A3BE8C",
-            warning="#EBCB8B",
-            error="#BF616A",
-            surface="#3B4252",
-            panel="#434C5E",
-            dark=True,
-            variables={
-                "block-cursor-text-style": "none",
-                "footer-key-foreground": "#88C0D0",
-                "input-selection-background": "#81a1c1 35%",
-            }),
-    }
-
     selected_rover = reactive("NASA API")
-    all_themes = ['gruvbox', 'nord', 'tokyo-night', 'textual-dark', 'flexoki', 'catppuccin-mocha']
+    all_themes = ['gruvbox', 'textual-dark', 'flexoki', 'catppuccin-mocha']
     current_theme_index = 0
     fav_theme_index = 0
     selected_theme = reactive(all_themes[0], init=False, recompose=False)
@@ -286,7 +250,7 @@ class NasaApp(App):
     def on_mount(self) -> None:
         # self.screen.styles.background = "black"
         # self.screen.styles.border = ("dashed", "maroon")
-        for theme_name, theme in self.custom_themes.items():
+        for theme_name, theme in custom_themes.items():
             self.all_themes.append(theme_name)
             self.register_theme(theme)
 
@@ -353,9 +317,12 @@ class NasaApp(App):
         """Add or remove the theme from the favorite themes list. If it is in the list, remove, otherwise, add"""
         if self.all_themes[self.current_theme_index] in self.fav_themes:
             self.fav_themes.remove(self.all_themes[self.current_theme_index])
+            pickle_themes(self.fav_themes)
 
         else:
             self.fav_themes.append(self.all_themes[self.current_theme_index])
+
+            pickle_themes(self.fav_themes)
             # Reactive var which is used in ui
             self.selected_theme = self.all_themes[self.current_theme_index]
 
